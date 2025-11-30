@@ -5,14 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Mis Cuentas a Pagar - Gestión Mensual</title>
     <link rel="stylesheet" href="styles.css"> 
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><text x='50%' y='50%' dominant-baseline='middle' text-anchor='middle' font-size='20'>$</text></svg>">
-    
     <link rel="manifest" href="manifest.json"> 
-    
 </head>
 <body>
     <header>
-        <h1>💵 Mis Gastos Mensuales</h1>
+        <h1>Mis Gastos Mensuales</h1>
         <p>Control de Cuentas a Pagar</p>
     </header>
 
@@ -24,52 +23,41 @@
         </div>
 
         <div id="notificationMessage" class="notification-message"></div>
-        <button id="abrirModal" class="btn-principal" style="display: block; margin-bottom: 1rem;">➕ Añadir Movimiento</button>
-
 
         <div class="tab-content active" data-tab="resumen">
-            <section class="resumen-detallado">
-                <h2>📊 Resumen del Mes</h2>
+            <section class="resumen-dashboard">
                 
-                <div class="detalle-grupo pendiente">
-                    <h3 class="titulo-grupo">🔴 Falta Pagar (<span id="pendienteTotal">$0.00</span>)</h3>
-                    <table class="tabla-resumen">
-                        <thead>
-                            <tr>
-                                <th>Descripción</th>
-                                <th class="monto-col">Monto</th>
-                                <th>Vencimiento</th>
-                                <th>Acciones</th>
-                            </tr>
-                        </thead>
-                        <tbody id="tablaPendiente">
-                            <tr class="sin-registros" id="sinPendientes"><td colspan="4">No hay gastos pendientes. ¡Excelente!</td></tr>
-                        </tbody>
-                    </table>
+                <div class="card card-total-gastado">
+                    <div class="card-icon"><span class="icon-label">💸</span></div>
+                    <div class="card-content">
+                        <h4>TOTAL GASTADO</h4>
+                        <p class="monto negativo" id="montoTotalGastado">$0.00</p>
+                    </div>
                 </div>
 
-                <div class="detalle-grupo pagado">
-                    <h3 class="titulo-grupo">✅ Ya Pagado (<span id="pagadoTotal">$0.00</span>)</h3>
-                    <table class="tabla-resumen">
-                        <thead>
-                            <tr>
-                                <th>Descripción</th>
-                                <th class="monto-col">Monto</th>
-                                <th>Fecha Pago</th>
-                                <th>Acciones</th>
-                            </tr>
-                        </thead>
-                        <tbody id="tablaPagado">
-                             <tr class="sin-registros" id="sinPagados"><td colspan="4">No hay gastos pagados este mes.</td></tr>
-                        </tbody>
-                    </table>
+                <div class="card card-pendiente">
+                    <div class="card-icon"><span class="icon-label">🚨</span></div>
+                    <div class="card-content">
+                        <h4>FALTA PAGAR</h4>
+                        <p class="monto negativo" id="pendienteTotal">$0.00</p>
+                    </div>
                 </div>
                 
-                <div class="indicador-total-gasto" id="totalGastadoContainer">
-                    <h4>TOTAL GASTADO EN EL MES</h4>
-                    <p class="monto negativo" id="montoTotalGastado">$0.00</p>
+                <div class="card card-pagado">
+                    <div class="card-icon"><span class="icon-label">✅</span></div>
+                    <div class="card-content">
+                        <h4>YA PAGADO</h4>
+                        <p class="monto positivo" id="pagadoTotal">$0.00</p>
+                    </div>
                 </div>
-                
+
+            </section>
+            
+            <section class="lista-detallada">
+                <h2>Pendientes de Pago</h2>
+                <ul id="listaPendientes" class="lista-movimientos">
+                    <li class="sin-registros" id="sinPendientes">No hay gastos pendientes. ¡Excelente!</li>
+                </ul>
             </section>
         </div>
         
@@ -109,7 +97,7 @@
                         </tbody>
                 </table>
             </div>
-        </section>
+        </div>
         
     </main>
 
@@ -123,7 +111,8 @@
                 <label for="tipo">Tipo:</label>
                 <select id="tipo" required> 
                     <option value="gasto">Gasto</option>
-                    <option value="ingreso">Ingreso</option> </select>
+                    <option value="ingreso">Ingreso</option>
+                </select>
 
                 <label for="descripcion">Descripción:</label>
                 <input type="text" id="descripcion" required>
@@ -150,6 +139,8 @@
     <footer>
         <p>© 2025 Gestión Personal de Finanzas</p>
     </footer>
+    
+    <button id="abrirModal" class="fab-btn" title="Añadir Movimiento">➕</button>
 
     <script src="script.js"></script>
 </body>

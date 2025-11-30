@@ -1,7 +1,6 @@
 // --- REGISTRO DEL SERVICE WORKER (CRÍTICO para PWA) ---
 if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
-        // Asegúrate de que el nombre del archivo coincida (service-worker.js)
         navigator.serviceWorker.register('service-worker.js')
             .then(registration => {
                 console.log('ServiceWorker registrado con éxito:', registration);
@@ -21,7 +20,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const formulario = document.getElementById('formularioMovimiento');
     const modalTitulo = document.getElementById('modalTitulo');
     const movimientoIdHidden = document.getElementById('movimientoId');
-    // Referencia al elemento de notificación
     const notificationMessage = document.getElementById('notificationMessage');
 
 
@@ -32,14 +30,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const tablaFijosBody = document.getElementById('tablaGastosFijos')?.querySelector('tbody');
     const tablaVariablesBody = document.getElementById('tablaGastosVariables')?.querySelector('tbody');
 
-    // Referencias para el Resumen Detallado
-    const tablaPendienteBody = document.getElementById('tablaPendiente')?.querySelector('tbody');
-    const tablaPagadoBody = document.getElementById('tablaPagado')?.querySelector('tbody');
+    // Referencias para el Resumen (Tarjetas y Lista)
     const pendienteTotalEl = document.getElementById('pendienteTotal');
     const pagadoTotalEl = document.getElementById('pagadoTotal');
     const montoTotalGastadoEl = document.getElementById('montoTotalGastado');
-    const sinPendientesEl = document.getElementById('sinPendientes');
-    const sinPagadosEl = document.getElementById('sinPagados');
+    const listaPendientesEl = document.getElementById('listaPendientes');
+    const sinPendientesEl = document.getElementById('sinPendientes'); // Ahora es un <li>
 
     let movimientos = []; 
     let gastosPendientes = 0;
@@ -48,6 +44,8 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- Funciones de Utilidad ---
     
     const formatearMonto = (monto) => {
+        // Asegura que el monto sea un número antes de llamar a toFixed
+        monto = parseFloat(monto) || 0; 
         return monto.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ".");
     }
     
@@ -59,10 +57,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const calcularDiasRestantes = (fechaVencimiento) => {
         const hoy = new Date();
-        hoy.setHours(0, 0, 0, 0); // Resetear tiempo
+        hoy.setHours(0, 0, 0, 0); 
         const fechaVenc = new Date(fechaVencimiento);
         
-        // Calcular la diferencia en días
         const diffTime = fechaVenc - hoy;
         const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
         
@@ -93,20 +90,25 @@ document.addEventListener('DOMContentLoaded', () => {
             movimientos = [];
         }
         
-        // Asegurar que todas las entradas antiguas tengan el campo 'pagado' por defecto
-        movimientos = movimientos.map(mov => ({ ...mov, pagado: mov.pagado !== undefined ? mov.pagado : false }));
+        movimientos = movimientos.map(mov => ({ 
+            ...mov, 
+            pagado: mov.pagado !== undefined ? mov.pagado : false,
+            // Asegura que todos tengan un ID
+            id: mov.id || Date.now() + Math.floor(Math.random() * 1000) 
+        }));
         
-        // Cargar los datos y renderizar solo el resumen
+        guardarDatos(); // Guardamos para asegurar que todos los ID y estados estén correctos
+
         actualizarResumenDetallado();
     };
 
     // --- Lógica de Renderizado y Resumen --
     
+    // 1. Actualiza las Tarjetas de Resumen
     const actualizarResumenDetallado = () => {
         gastosPendientes = 0;
         gastosPagados = 0;
         
-        // Calcular totales
         movimientos.forEach(mov => {
             if (mov.tipo === 'gasto') {
                 if (mov.pagado) {
@@ -119,117 +121,109 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const totalGastado = gastosPendientes + gastosPagados;
 
-        // Renderizar totales
+        // Renderizar totales en las tarjetas
         pendienteTotalEl.textContent = `$${formatearMonto(gastosPendientes)}`;
         pagadoTotalEl.textContent = `$${formatearMonto(gastosPagados)}`;
         montoTotalGastadoEl.textContent = `$${formatearMonto(totalGastado)}`;
 
-        // Renderizar la tabla del resumen
-        renderizarResumenDetallado();
+        // Renderiza la lista de pendientes para la pestaña Resumen
+        renderizarListaPendientes();
     }
     
-    const crearFilaResumen = (mov) => {
-        const tr = document.createElement('tr');
+    // 2. Renderiza la Lista de Pendientes (Reemplaza la tabla en el resumen)
+    const crearItemListaPendiente = (mov) => {
+        const li = document.createElement('li');
+        li.classList.add('movimiento-item');
+
+        const diasRestantes = calcularDiasRestantes(mov.fechaVencimiento);
+        let mensajeFecha = `Vence en ${diasRestantes} días`;
         
-        // Aplica clases de alerta si está pendiente
-        if (!mov.pagado) {
-            const diasRestantes = calcularDiasRestantes(mov.fechaVencimiento);
-            if (diasRestantes <= 0) {
-                tr.classList.add('alerta-vencido'); // Vencido
-            } else if (diasRestantes <= 5) {
-                tr.classList.add('alerta-proximo'); // Próximo a vencer
-            }
+        if (diasRestantes <= 0) {
+            li.classList.add('alerta-vencido'); 
+            mensajeFecha = `¡VENCIDO! (${formatearFecha(mov.fechaVencimiento)})`;
+        } else if (diasRestantes <= 5) {
+            li.classList.add('alerta-proximo'); 
         }
-        
-        const fechaDisplay = mov.pagado ? formatearFecha(mov.fechaVencimiento) : calcularDiasRestantes(mov.fechaVencimiento) + ' días';
-        
-        tr.innerHTML = `
-            <td>${mov.descripcion}</td>
-            <td class="monto-col">$${formatearMonto(mov.monto)}</td>
-            <td>${mov.pagado ? formatearFecha(mov.fechaVencimiento) : fechaDisplay}</td>
-            <td>
-                ${mov.pagado ? 
-                    `<button class="btn-eliminar" data-id="${mov.id}" title="Eliminar">&times;</button>` : 
-                    `<button class="btn-pago" data-id="${mov.id}">Pagar</button>`
-                }
-            </td>
+
+        li.innerHTML = `
+            <div class="movimiento-header">
+                <span class="movimiento-descripcion">${mov.descripcion}</span>
+                <span class="movimiento-monto negativo">$${formatearMonto(mov.monto)}</span>
+            </div>
+            <div class="movimiento-footer">
+                <span class="movimiento-fecha">${mensajeFecha}</span>
+                <div>
+                    <button class="btn-pago" data-id="${mov.id}">Pagar</button>
+                    <button class="btn-editar" data-id="${mov.id}">Editar</button>
+                </div>
+            </div>
         `;
         
-        return tr;
+        return li;
     };
     
-    const renderizarResumenDetallado = () => {
-        if (!tablaPendienteBody || !tablaPagadoBody) return;
+    const renderizarListaPendientes = () => {
+        if (!listaPendientesEl) return;
         
-        tablaPendienteBody.innerHTML = '';
-        tablaPagadoBody.innerHTML = '';
+        // Limpia la lista, excepto el mensaje de "No hay registros" (sinPendientesEl)
+        listaPendientesEl.innerHTML = '';
+        listaPendientesEl.appendChild(sinPendientesEl); 
         
-        const pendientes = movimientos.filter(mov => mov.tipo === 'gasto' && !mov.pagado);
-        const pagados = movimientos.filter(mov => mov.tipo === 'gasto' && mov.pagado);
+        const pendientes = movimientos.filter(mov => mov.tipo === 'gasto' && !mov.pagado)
+            .sort((a, b) => new Date(a.fechaVencimiento) - new Date(b.fechaVencimiento)); // Ordena por fecha más cercana
 
         // Renderizar Pendientes
         if (pendientes.length === 0) {
-            sinPendientesEl.style.display = 'table-row';
+            sinPendientesEl.style.display = 'list-item';
         } else {
             sinPendientesEl.style.display = 'none';
             pendientes.forEach(mov => {
-                tablaPendienteBody.appendChild(crearFilaResumen(mov));
-            });
-        }
-
-        // Renderizar Pagados
-        if (pagados.length === 0) {
-            sinPagadosEl.style.display = 'table-row';
-        } else {
-            sinPagadosEl.style.display = 'none';
-            pagados.forEach(mov => {
-                tablaPagadoBody.appendChild(crearFilaResumen(mov));
+                listaPendientesEl.appendChild(crearItemListaPendiente(mov));
             });
         }
         
-        // Re-adjuntar Event Listeners para el resumen
-        document.querySelectorAll('#tablaPendiente .btn-pago').forEach(btn => {
+        // Re-adjuntar Event Listeners para la lista de resumen
+        document.querySelectorAll('#listaPendientes .btn-pago').forEach(btn => {
             btn.addEventListener('click', manejarPago);
         });
-        document.querySelectorAll('#tablaPagado .btn-eliminar').forEach(btn => {
-            btn.addEventListener('click', manejarEliminacion);
+        document.querySelectorAll('#listaPendientes .btn-editar').forEach(btn => {
+            btn.addEventListener('click', manejarEdicion);
         });
     };
     
-    // --- Lógica de Transacciones (Pestaña) ---
+    // --- Lógica de Transacciones (Pestaña) --
     
+    // El resto de funciones (crearFilaTransaccion y renderizarTablasCompletas)
+    // se mantienen enfocadas en las tablas para la pestaña de "Transacciones"
+
     const crearFilaTransaccion = (mov) => {
         const tr = document.createElement('tr');
         const esFijo = mov.categoria === 'fijo';
         const esIngreso = mov.tipo === 'ingreso';
         
-        let descripcionCol = esIngreso ? mov.descripcion : `${mov.descripcion} (${mov.categoria})`;
+        // Usamos íconos para las categorías
+        const categoriaIcono = {
+            fijo: '🏠',
+            variable: '🛒',
+            ocio: '🎬',
+            ingreso: '💰'
+        };
+
+        let descripcionCol = esIngreso ? `${categoriaIcono.ingreso} ${mov.descripcion}` : `${categoriaIcono[mov.categoria] || ''} ${mov.descripcion}`;
         let fechaCol = formatearFecha(mov.fechaVencimiento);
         let estadoCol = '';
         
         if (esFijo && mov.tipo === 'gasto') {
             estadoCol = `<span class="estado ${mov.pagado ? 'pagado' : 'pendiente'}">${mov.pagado ? 'Pagado' : 'Pendiente'}</span>`;
-            
-            // Aplica clases de alerta a gastos pendientes Fijos
-            if (!mov.pagado) {
-                const diasRestantes = calcularDiasRestantes(mov.fechaVencimiento);
-                if (diasRestantes <= 0) {
-                    tr.classList.add('alerta-vencido'); // Vencido
-                } else if (diasRestantes <= 5) {
-                    tr.classList.add('alerta-proximo'); // Próximo a vencer
-                }
-            }
         } else if (esIngreso) {
              estadoCol = `<span class="estado pagado">Ingreso</span>`;
         }
         
-        
         let innerHTML;
         if (esFijo || esIngreso) {
-            // Tabla de Fijos/Ingresos (Tiene 5 columnas: Desc, Monto, FechaPlanificada, Estado, Acciones)
             innerHTML = `
                 <td>${descripcionCol}</td>
-                <td>$${formatearMonto(mov.monto)}</td>
+                <td class="monto ${mov.tipo === 'gasto' ? 'negativo' : 'positivo'}">$${formatearMonto(mov.monto)}</td>
                 <td class="col-vencimiento">${fechaCol}</td>
                 <td>${estadoCol}</td>
                 <td>
@@ -239,10 +233,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 </td>
             `;
         } else {
-            // Tabla de Variables/Ocio (Tiene 4 columnas: Desc/Cat, Monto, FechaGasto, Acciones)
             innerHTML = `
                 <td>${descripcionCol}</td>
-                <td>$${formatearMonto(mov.monto)}</td>
+                <td class="monto negativo">$${formatearMonto(mov.monto)}</td>
                 <td class="col-vencimiento">${fechaCol}</td>
                 <td>
                     <button class="btn-editar" data-id="${mov.id}">Editar</button>
@@ -262,31 +255,28 @@ document.addEventListener('DOMContentLoaded', () => {
         tablaFijosBody.innerHTML = '';
         tablaVariablesBody.innerHTML = '';
         
-        // Filtrar y ordenar movimientos
         const fijosEIngresos = movimientos.filter(mov => mov.categoria === 'fijo' || mov.tipo === 'ingreso')
-            .sort((a, b) => new Date(b.fechaVencimiento) - new Date(a.fechaVencimiento)); // Más reciente primero
+            .sort((a, b) => new Date(b.fechaVencimiento) - new Date(a.fechaVencimiento)); 
 
-        const variablesYOcio = movimientos.filter(mov => mov.categoria !== 'fijo' && mov.tipo === 'gasto' && mov.categoria !== 'ingreso')
-            .sort((a, b) => new Date(b.fechaVencimiento) - new Date(a.fechaVencimiento)); // Más reciente primero
+        const variablesYOcio = movimientos.filter(mov => mov.categoria !== 'fijo' && mov.tipo === 'gasto')
+            .sort((a, b) => new Date(b.fechaVencimiento) - new Date(a.fechaVencimiento));
 
-        // Renderizar Fijos e Ingresos
         fijosEIngresos.forEach(mov => {
             tablaFijosBody.appendChild(crearFilaTransaccion(mov));
         });
         
-        // Renderizar Variables y Ocio
         variablesYOcio.forEach(mov => {
             tablaVariablesBody.appendChild(crearFilaTransaccion(mov));
         });
         
-        // Re-adjuntar Event Listeners
-        document.querySelectorAll('.btn-editar').forEach(btn => {
+        // Re-adjuntar Event Listeners para las tablas de transacciones
+        document.querySelectorAll('#tablaGastosFijos .btn-editar, #tablaGastosVariables .btn-editar').forEach(btn => {
             btn.addEventListener('click', manejarEdicion);
         });
-        document.querySelectorAll('.btn-eliminar').forEach(btn => {
+        document.querySelectorAll('#tablaGastosFijos .btn-eliminar, #tablaGastosVariables .btn-eliminar').forEach(btn => {
             btn.addEventListener('click', manejarEliminacion);
         });
-        document.querySelectorAll('.btn-pago').forEach(btn => {
+        document.querySelectorAll('#tablaGastosFijos .btn-pago').forEach(btn => {
             btn.addEventListener('click', manejarPago);
         });
     };
@@ -305,7 +295,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 document.getElementById('descripcion').value = mov.descripcion;
                 document.getElementById('monto').value = mov.monto;
                 document.getElementById('fechaVencimiento').value = mov.fechaVencimiento;
-                document.getElementById('categoria').value = mov.categoria || 'fijo'; // Asegura un valor por defecto
+                document.getElementById('categoria').value = mov.categoria || 'fijo';
             }
         } else {
             modalTitulo.textContent = 'Añadir Movimiento';
@@ -329,7 +319,7 @@ document.addEventListener('DOMContentLoaded', () => {
         
         if (mov && !mov.pagado) {
             mov.pagado = true;
-            // Se actualiza la fecha de vencimiento a la fecha de hoy para el resumen pagado
+            // Usa la fecha de pago real (hoy)
             const hoy = new Date().toISOString().split('T')[0];
             mov.fechaVencimiento = hoy; 
             
@@ -356,7 +346,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- Inicialización ---
     
-    // Evento para los TABS
     tabButtons.forEach(button => {
         button.addEventListener('click', () => {
             const targetTab = button.dataset.tab;
@@ -372,14 +361,15 @@ document.addEventListener('DOMContentLoaded', () => {
             document.querySelector(`.tab-content[data-tab="${targetTab}"]`).classList.add('active');
             button.classList.add('active');
             
-            // Si el usuario cambia a transacciones, renderiza la tabla completa
             if (targetTab === 'transacciones') {
                  renderizarTablasCompletas();
+            } else if (targetTab === 'resumen') {
+                 // El resumen se actualiza automáticamente con cada cambio
+                 renderizarListaPendientes(); 
             }
         });
     });
 
-    // Cargar datos al iniciar y renderizar resumen
     cargarDatos();
     
     // Event Listeners del Modal
@@ -406,11 +396,9 @@ document.addEventListener('DOMContentLoaded', () => {
         
         let pagadoStatus = false;
 
-        // Si estamos editando, conservamos el estado de pago original
         if (isEditing) {
           pagadoStatus = movimientos.find(mov => mov.id === id)?.pagado || false;
         }
-
 
         const nuevoMovimiento = {
             id: id, 
@@ -419,7 +407,6 @@ document.addEventListener('DOMContentLoaded', () => {
             monto: monto,
             fechaVencimiento: fechaVencimiento, 
             categoria: categoria,
-            // Si es nueva entrada, se establece PENDIENTE (false) por defecto o si se está editando, se mantiene el estado
             pagado: isEditing ? pagadoStatus : false 
         };
 
@@ -434,7 +421,11 @@ document.addEventListener('DOMContentLoaded', () => {
         
         guardarDatos();
         actualizarResumenDetallado();
-        renderizarTablasCompletas(); // Renderiza todas para asegurar que el cambio se refleje
+        // Solo renderiza la tabla completa si el usuario está en esa pestaña
+        const transaccionesTab = document.querySelector('.tab-content[data-tab="transacciones"]');
+        if (transaccionesTab.classList.contains('active')) {
+            renderizarTablasCompletas(); 
+        }
         
         cerrarModal();
     });
