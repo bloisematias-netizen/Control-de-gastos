@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mis Cuentas a Pagar - Gestión Mensual</title>
+    <link rel="stylesheet" href="styles.css"> 
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><text x='50%' y='50%' dominant-baseline='middle' text-anchor='middle' font-size='20'>$</text></svg>">
+</head>
+<body>
+    <header>
+        <h1>💵 Mis Gastos Mensuales</h1>
+        <p>Control de Cuentas a Pagar</p>
+    </header>
+
+    <main>
+        
+        <div class="tabs">
+            <button class="tab-button active" data-tab="resumen">📊 Resumen</button>
+            <button class="tab-button" data-tab="transacciones">📝 Transacciones</button>
+        </div>
+
+        <div id="notificationMessage" class="notification-message"></div>
+        <button id="abrirModal" class="btn-principal" style="display: block; margin-bottom: 1rem;">➕ Añadir Movimiento</button>
+
+
+        <div class="tab-content active" data-tab="resumen">
+            <section class="resumen-detallado">
+                <h2>📊 Resumen del Mes</h2>
+                
+                <div class="indicadores-resumen">
+                    <div class="indicador grande pagado-total">
+                        <h3>Ya Pagado</h3>
+                        <p class="monto monto-pagado" id="pagadoTotal">$0,00</p>
+                    </div>
+                    <div class="indicador grande pendiente-total">
+                        <h3>Falta Pagar</h3>
+                        <p class="monto monto-pendiente" id="pendienteTotal">$0,00</p>
+                    </div>
+                    <div class="indicador grande total-mes">
+                        <h3>Total Gastado en el Mes</h3>
+                        <p class="monto monto-total" id="montoTotalGastado">$0,00</p>
+                    </div>
+                </div>
+
+                <div class="contenedor-gastos">
+                    <div class="detalle-grupo pendiente">
+                        <h3 class="titulo-grupo">🔴 Falta Pagar</h3>
+                        <div id="sinPendientes" class="mensaje-vacio" style="display: none;">¡No hay gastos pendientes! Estás al día.</div>
+                        <table id="tablaPendiente">
+                            <thead>
+                                <tr>
+                                    <th>Descripción</th>
+                                    <th>Fecha Planificada</th>
+                                    <th>Monto</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                </tbody>
+                        </table>
+                    </div>
+
+                    <div class="detalle-grupo pagado">
+                        <h3 class="titulo-grupo">✅ Pagado</h3>
+                        <div id="sinPagados" class="mensaje-vacio" style="display: none;">No hay gastos pagados aún.</div>
+                        <table id="tablaPagado">
+                            <thead>
+                                <tr>
+                                    <th>Descripción</th>
+                                    <th>Fecha de Pago</th>
+                                    <th>Monto</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <div class="tab-content" data-tab="transacciones">
+            <h2>📝 Detalle de Transacciones</h2>
+            <div class="contenedor-gastos">
+                <div class="categoria-gasto">
+                    <h3>Gastos Fijos</h3>
+                    <table id="tablaGastosFijos">
+                        <thead>
+                            <tr>
+                                <th>Descripción</th>
+                                <th>Monto</th>
+                                <th class="col-vencimiento">Fecha Planificada</th>
+                                <th>Estado</th>
+                                <th>Días</th> <th>Acciones</th> 
+                            </tr>
+                        </thead>
+                        <tbody>
+                            </tbody>
+                    </table>
+                </div>
+
+                <div class="categoria-gasto">
+                    <h3>Otros Gastos (Variables y Ocio)</h3> 
+                    <table id="tablaGastosVariables">
+                        <thead>
+                            <tr>
+                                <th>Descripción</th>
+                                <th>Monto</th>
+                                <th class="col-vencimiento">Fecha de Gasto</th>
+                                <th>Estado</th> 
+                                <th>Acciones</th> 
+                            </tr>
+                        </thead>
+                        <tbody>
+                            </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+        
+    </main>
+
+    <div id="modal" class="modal">
+        <div class="modal-contenido">
+            <span class="cerrar-modal">&times;</span>
+            <h3 id="modalTitulo">Añadir Movimiento</h3> 
+            <form id="formularioMovimiento">
+                <input type="hidden" id="movimientoId" value=""> 
+                
+                <label for="tipo">Tipo:</label>
+                <select id="tipo" required> 
+                    <option value="gasto">Gasto</option>
+                </select>
+
+                <label for="descripcion">Descripción:</label>
+                <input type="text" id="descripcion" required>
+
+                <label for="monto">Monto ($):</label>
+                <input type="number" id="monto" min="0.01" step="0.01" required>
+
+                <label for="fechaVencimiento">Fecha de Vencimiento/Pago:</label>
+                <input type="date" id="fechaVencimiento" required>
+
+                <label for="categoria">Categoría (para gastos):</label>
+                <select id="categoria">
+                    <option value="fijo">Fijo</option>
+                    <option value="variable">Variable</option>
+                    <option value="ocio">Ocio</option> 
+                </select>
+                
+                <button type="submit" class="btn-principal">Guardar Movimiento</button>
+            </form>
+        </div>
+    </div>
+
+
+    <footer>
+        <p>© 2025 Gestión Personal de Finanzas</p>
+    </footer>
+
+    <script src="script.js"></script>
+</body>
+</html>

@@ -1,0 +1,422 @@
+/* Variables para colores */
+:root {
+    --color-principal: #4CAF50; /* Verde */
+    --color-secundario: #f44336; /* Rojo */
+    --color-fondo: #f8f9fa;
+    --color-tarjeta: #ffffff;
+    --color-texto: #333; /* NEGRO */
+    --color-tab-inactivo: #e9ecef; /* Color para pestañas inactivas */
+    --color-tab-activo: var(--color-principal);
+}
+
+/* Base y Tipografía */
+body {
+    font-family: Arial, sans-serif;
+    background-color: var(--color-fondo);
+    color: var(--color-texto);
+    margin: 0;
+    padding: 0;
+    line-height: 1.6;
+}
+
+header {
+    background-color: var(--color-principal);
+    color: white;
+    padding: 1rem;
+    text-align: center;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+main {
+    padding: 1rem;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+/* --- Estilo de Pestañas (TABS) --- */
+.tabs {
+    display: flex;
+    justify-content: space-around;
+    border-bottom: 2px solid #ccc;
+    margin-bottom: 0; 
+}
+
+.tab-button {
+    flex: 1;
+    padding: 10px 0;
+    text-align: center;
+    border: none;
+    background-color: var(--color-tab-inactivo);
+    cursor: pointer;
+    font-size: 1rem;
+    font-weight: bold;
+    transition: background-color 0.3s, color 0.3s;
+    border-radius: 8px 8px 0 0;
+    margin: 0 5px; 
+}
+
+.tab-button:first-child { margin-left: 0; }
+.tab-button:last-child { margin-right: 0; }
+
+.tab-button:hover:not(.active) {
+    background-color: #d1d4d7;
+}
+
+.tab-button.active {
+    background-color: var(--color-principal);
+    color: white;
+    border-bottom: 3px solid var(--color-principal);
+}
+
+/* Contenido de la Pestaña - Control de Visibilidad */
+.tab-content {
+    display: none;
+    animation: fadeIn 0.5s;
+    background-color: var(--color-tarjeta);
+    padding: 1rem;
+    border-radius: 0 8px 8px 8px; 
+    box-shadow: 0 4px 8px rgba(0,0,0,0.05);
+    margin-bottom: 1.5rem;
+}
+
+.tab-content.active {
+    display: block;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* --- Estilo del Resumen DETALLADO --- */
+
+.detalle-grupo {
+    margin-bottom: 20px;
+    padding: 10px;
+    border-radius: 6px;
+    border: 1px solid #eee;
+}
+
+.detalle-grupo.pendiente {
+    border-color: var(--color-secundario);
+    background-color: #ffeaea;
+}
+
+.detalle-grupo.pagado {
+    border-color: var(--color-principal);
+    background-color: #ebfff0;
+    /* 🟢 FIX: Asegura que todo el texto dentro del grupo Pagado sea negro */
+    color: var(--color-texto);
+}
+
+/* Las siguientes reglas ya existían para forzar el color negro en el título, ahora son redundantes pero inofensivas */
+.detalle-grupo.pagado .titulo-grupo {
+    color: var(--color-texto); 
+}
+.detalle-grupo.pagado .titulo-grupo span {
+    color: var(--color-texto); 
+}
+
+.titulo-grupo {
+    font-size: 1.1rem;
+    margin-top: 0;
+    margin-bottom: 10px;
+    padding-bottom: 5px;
+    border-bottom: 1px dashed #ccc;
+    color: var(--color-texto); 
+}
+
+.tabla-resumen {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 0;
+    font-size: 0.9rem;
+}
+
+.tabla-resumen th, .tabla-resumen td {
+    padding: 6px 4px;
+    border-bottom: 1px solid #ddd;
+    text-align: left;
+    color: var(--color-texto); /* Aseguramos que el contenido de la tabla también sea negro */
+}
+
+.tabla-resumen th {
+    background-color: #f0f0f0;
+    font-weight: bold;
+}
+
+.tabla-resumen .monto-col {
+    text-align: right;
+    width: 25%;
+}
+
+.tabla-resumen td:nth-child(3) {
+    font-weight: bold;
+    text-align: right;
+}
+
+.sin-registros {
+    text-align: center;
+    color: #777;
+    font-style: italic;
+    padding: 10px 0 0;
+}
+
+/* Estilo para el Total Gastado */
+.indicador-total-gasto {
+    width: 100%;
+    text-align: center;
+    padding: 15px;
+    background-color: #fce4e4; 
+    color: var(--color-texto);
+    border-radius: 6px;
+    margin-top: 20px; 
+    border: 1px solid var(--color-secundario);
+}
+
+.monto {
+    font-size: 1.5rem;
+    font-weight: bold;
+    margin: 5px 0 0;
+}
+
+.positivo {
+    color: var(--color-principal);
+}
+
+.negativo {
+    color: var(--color-secundario);
+}
+
+.neutro {
+    color: var(--color-texto);
+}
+
+/* --- Botones de Acción (Editar, Borrar, Pagar) --- */
+.btn-principal {
+    display: block;
+    width: 100%;
+    padding: 10px;
+    background-color: var(--color-principal);
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 1rem;
+    transition: background-color 0.3s;
+    margin-top: 15px; 
+}
+
+.btn-principal:hover {
+    background-color: #45a049;
+}
+
+.btn-eliminar, .btn-editar, .btn-pago { 
+    background-color: var(--color-secundario); 
+    color: white;
+    border: none;
+    padding: 5px 8px;
+    border-radius: 3px;
+    cursor: pointer;
+    font-size: 0.8rem;
+    margin-left: 5px;
+}
+
+.btn-editar {
+    background-color: #007bff;
+}
+
+.btn-pago {
+    background-color: #28a745;
+    font-weight: bold;
+}
+
+/* --- Estilo de Tablas de Gastos (Detalle de Transacciones) --- */
+
+.contenedor-gastos {
+    display: flex;
+    flex-direction: column; 
+    gap: 1.5rem;
+}
+
+.categoria-gasto {
+    background-color: var(--color-tarjeta);
+    padding: 1rem;
+    border-radius: 8px;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.05);
+    overflow-x: auto; 
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 10px;
+    font-size: 0.9rem;
+    min-width: 600px; 
+}
+
+th, td {
+    padding: 8px;
+    text-align: left;
+    border-bottom: 1px solid #ddd;
+    white-space: nowrap; 
+}
+
+th {
+    background-color: #e9ecef;
+    font-weight: bold;
+    color: var(--color-texto);
+}
+
+.col-vencimiento {
+    display: none; 
+}
+
+/* Estados de pago */
+.estado {
+    padding: 3px 6px;
+    border-radius: 4px;
+    font-size: 0.8rem;
+    font-weight: bold;
+}
+.pendiente {
+    background-color: #ffc107; 
+    color: var(--color-texto);
+}
+.pagado {
+    background-color: var(--color-principal); 
+    color: white;
+}
+
+/* --- Estilo del Modal (Pop-up) --- */
+.modal {
+    display: none; 
+    position: fixed;
+    z-index: 100;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    overflow: auto;
+    background-color: rgba(0,0,0,0.4); 
+}
+
+.modal-contenido {
+    background-color: #fefefe;
+    margin: 15% auto; 
+    padding: 20px;
+    border-radius: 8px;
+    width: 90%; 
+    max-width: 400px;
+    position: relative;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+}
+
+.cerrar-modal {
+    color: #aaa;
+    float: right;
+    font-size: 28px;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+/* Formulario dentro del modal */
+#formularioMovimiento label {
+    display: block;
+    margin-top: 10px;
+    font-weight: bold;
+}
+
+#formularioMovimiento input, 
+#formularioMovimiento select,
+#formularioMovimiento button {
+    width: 100%;
+    padding: 10px;
+    margin-top: 5px;
+    box-sizing: border-box;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+}
+
+/* --- Adaptación para Pantallas Grandes (Tablets y Desktop) --- */
+@media (min-width: 600px) {
+    /* Mostrar la columna de vencimiento en pantallas más grandes */
+    .col-vencimiento {
+        display: table-cell; 
+    }
+    
+    .contenedor-gastos {
+        flex-direction: row; 
+    }
+
+    .categoria-gasto {
+        flex: 1; 
+    }
+    
+    /* Resumen Detallado en 2 columnas */
+    .resumen-detallado {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        grid-template-areas: 
+            "h2 h2"
+            "pendiente pagado"
+            "gasto gasto"
+            "boton boton";
+        gap: 20px;
+    }
+    
+    .resumen-detallado h2 {
+        grid-area: h2;
+    }
+    .detalle-grupo.pendiente { 
+        grid-area: pendiente;
+    }
+    .detalle-grupo.pagado {
+        grid-area: pagado;
+    }
+    #totalGastadoContainer {
+        grid-area: gasto;
+        margin-top: 0;
+    }
+    #abrirModal {
+        grid-area: boton;
+        margin-top: 0;
+    }
+}
+
+/* --- NUEVOS ESTILOS DE ALERTA DE VENCIMIENTO --- */
+
+/* Fila de la tabla con menos de 5 días de vencimiento */
+.alerta-proximo {
+    background-color: #fff8e1 !important; /* Amarillo muy claro */
+    border-left: 5px solid #ffb300; /* Borde naranja */
+}
+
+/* Fila de la tabla VENCIDA (0 días o menos) */
+.alerta-vencido {
+    background-color: #ffebee !important; /* Rojo muy claro */
+    border-left: 5px solid var(--color-secundario); /* Borde rojo */
+    font-weight: 600;
+}
+
+/* Aplicar estilo también en el resumen */
+#tablaPendiente tr.alerta-proximo,
+#tablaPendiente tr.alerta-vencido {
+    /* Mantiene los colores de fondo y borde */
+    background-color: inherit; 
+    font-weight: 600;
+}
+
+/* Asegurar que las filas del resumen con alerta también destaquen */
+.detalle-grupo.pendiente .alerta-vencido {
+    background-color: #ffebeb !important;
+}
+.detalle-grupo.pendiente .alerta-proximo {
+    background-color: #fffde7 !important;
+}
+
+/* Estilo para las celdas de días/estado para que se vean bien */
+.categoria-gasto td:nth-child(5) { 
+    font-weight: 600;
+    white-space: nowrap;
+}
