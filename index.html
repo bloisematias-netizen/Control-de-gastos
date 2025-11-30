@@ -6,6 +6,9 @@
     <title>Mis Cuentas a Pagar - Gestión Mensual</title>
     <link rel="stylesheet" href="styles.css"> 
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><text x='50%' y='50%' dominant-baseline='middle' text-anchor='middle' font-size='20'>$</text></svg>">
+    
+    <link rel="manifest" href="manifest.json"> 
+    
 </head>
 <body>
     <header>
@@ -28,62 +31,54 @@
             <section class="resumen-detallado">
                 <h2>📊 Resumen del Mes</h2>
                 
-                <div class="indicadores-resumen">
-                    <div class="indicador grande pagado-total">
-                        <h3>Ya Pagado</h3>
-                        <p class="monto monto-pagado" id="pagadoTotal">$0,00</p>
-                    </div>
-                    <div class="indicador grande pendiente-total">
-                        <h3>Falta Pagar</h3>
-                        <p class="monto monto-pendiente" id="pendienteTotal">$0,00</p>
-                    </div>
-                    <div class="indicador grande total-mes">
-                        <h3>Total Gastado en el Mes</h3>
-                        <p class="monto monto-total" id="montoTotalGastado">$0,00</p>
-                    </div>
+                <div class="detalle-grupo pendiente">
+                    <h3 class="titulo-grupo">🔴 Falta Pagar (<span id="pendienteTotal">$0.00</span>)</h3>
+                    <table class="tabla-resumen">
+                        <thead>
+                            <tr>
+                                <th>Descripción</th>
+                                <th class="monto-col">Monto</th>
+                                <th>Vencimiento</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tablaPendiente">
+                            <tr class="sin-registros" id="sinPendientes"><td colspan="4">No hay gastos pendientes. ¡Excelente!</td></tr>
+                        </tbody>
+                    </table>
                 </div>
 
-                <div class="contenedor-gastos">
-                    <div class="detalle-grupo pendiente">
-                        <h3 class="titulo-grupo">🔴 Falta Pagar</h3>
-                        <div id="sinPendientes" class="mensaje-vacio" style="display: none;">¡No hay gastos pendientes! Estás al día.</div>
-                        <table id="tablaPendiente">
-                            <thead>
-                                <tr>
-                                    <th>Descripción</th>
-                                    <th>Fecha Planificada</th>
-                                    <th>Monto</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                </tbody>
-                        </table>
-                    </div>
-
-                    <div class="detalle-grupo pagado">
-                        <h3 class="titulo-grupo">✅ Pagado</h3>
-                        <div id="sinPagados" class="mensaje-vacio" style="display: none;">No hay gastos pagados aún.</div>
-                        <table id="tablaPagado">
-                            <thead>
-                                <tr>
-                                    <th>Descripción</th>
-                                    <th>Fecha de Pago</th>
-                                    <th>Monto</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                </tbody>
-                        </table>
-                    </div>
+                <div class="detalle-grupo pagado">
+                    <h3 class="titulo-grupo">✅ Ya Pagado (<span id="pagadoTotal">$0.00</span>)</h3>
+                    <table class="tabla-resumen">
+                        <thead>
+                            <tr>
+                                <th>Descripción</th>
+                                <th class="monto-col">Monto</th>
+                                <th>Fecha Pago</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tablaPagado">
+                             <tr class="sin-registros" id="sinPagados"><td colspan="4">No hay gastos pagados este mes.</td></tr>
+                        </tbody>
+                    </table>
                 </div>
+                
+                <div class="indicador-total-gasto" id="totalGastadoContainer">
+                    <h4>TOTAL GASTADO EN EL MES</h4>
+                    <p class="monto negativo" id="montoTotalGastado">$0.00</p>
+                </div>
+                
             </section>
         </div>
-
+        
         <div class="tab-content" data-tab="transacciones">
             <h2>📝 Detalle de Transacciones</h2>
             <div class="contenedor-gastos">
+                
                 <div class="categoria-gasto">
-                    <h3>Gastos Fijos</h3>
+                    <h3>Gastos Fijos e Ingresos</h3>
                     <table id="tablaGastosFijos">
                         <thead>
                             <tr>
@@ -91,11 +86,11 @@
                                 <th>Monto</th>
                                 <th class="col-vencimiento">Fecha Planificada</th>
                                 <th>Estado</th>
-                                <th>Días</th> <th>Acciones</th> 
+                                <th>Acciones</th>
                             </tr>
                         </thead>
                         <tbody>
-                            </tbody>
+                        </tbody>
                     </table>
                 </div>
 
@@ -104,17 +99,15 @@
                     <table id="tablaGastosVariables">
                         <thead>
                             <tr>
-                                <th>Descripción</th>
+                                <th>Descripción y Categoría</th>
                                 <th>Monto</th>
                                 <th class="col-vencimiento">Fecha de Gasto</th>
-                                <th>Estado</th> 
                                 <th>Acciones</th> 
                             </tr>
                         </thead>
                         <tbody>
-                            </tbody>
-                    </table>
-                </div>
+                        </tbody>
+                </table>
             </div>
         </section>
         
@@ -130,7 +123,7 @@
                 <label for="tipo">Tipo:</label>
                 <select id="tipo" required> 
                     <option value="gasto">Gasto</option>
-                </select>
+                    <option value="ingreso">Ingreso</option> </select>
 
                 <label for="descripcion">Descripción:</label>
                 <input type="text" id="descripcion" required>

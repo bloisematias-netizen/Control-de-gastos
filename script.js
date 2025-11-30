@@ -1,3 +1,18 @@
+// --- REGISTRO DEL SERVICE WORKER (CRÍTICO para PWA) ---
+if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+        // Asegúrate de que el nombre del archivo coincida (service-worker.js)
+        navigator.serviceWorker.register('service-worker.js')
+            .then(registration => {
+                console.log('ServiceWorker registrado con éxito:', registration);
+            })
+            .catch(error => {
+                console.log('Fallo el registro de ServiceWorker:', error);
+            });
+    });
+}
+// -----------------------------------------------------------
+
 document.addEventListener('DOMContentLoaded', () => {
     // Referencias a elementos del DOM
     const modal = document.getElementById('modal');
@@ -27,41 +42,42 @@ document.addEventListener('DOMContentLoaded', () => {
     const sinPagadosEl = document.getElementById('sinPagados');
 
     let movimientos = []; 
-    let gastosTotales = 0; 
-
-    // --- Lógica de Pestañas ---
+    let gastosPendientes = 0;
+    let gastosPagados = 0;
     
-    const cambiarPestana = (tabId) => {
-        tabContents.forEach(content => content.classList.remove('active'));
-        tabButtons.forEach(button => button.classList.remove('active'));
-
-        const targetContent = document.querySelector(`.tab-content[data-tab="${tabId}"]`);
-        if (targetContent) {
-            targetContent.classList.add('active');
-        }
-
-        const targetButton = document.querySelector(`.tab-button[data-tab="${tabId}"]`);
-        if (targetButton) {
-            targetButton.classList.add('active');
-        }
-        
-        // Si cambiamos a la pestaña de Transacciones, aseguramos que se renderice
-        if (tabId === 'transacciones') {
-             renderizarTablasCompletas();
-        }
-        
-        // Mostrar/Ocultar el botón de añadir movimiento (solo en el resumen)
-        if (abrirModalBtn) {
-            abrirModalBtn.style.display = tabId === 'resumen' ? 'block' : 'none';
-        }
+    // --- Funciones de Utilidad ---
+    
+    const formatearMonto = (monto) => {
+        return monto.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+    }
+    
+    const formatearFecha = (dateString) => {
+        if (!dateString) return 'N/A';
+        const [year, month, day] = dateString.split('-');
+        return `${day}/${month}/${year}`;
     };
-    
-    tabButtons.forEach(button => {
-        button.addEventListener('click', () => {
-            const tabId = button.dataset.tab;
-            cambiarPestana(tabId);
-        });
-    });
+
+    const calcularDiasRestantes = (fechaVencimiento) => {
+        const hoy = new Date();
+        hoy.setHours(0, 0, 0, 0); // Resetear tiempo
+        const fechaVenc = new Date(fechaVencimiento);
+        
+        // Calcular la diferencia en días
+        const diffTime = fechaVenc - hoy;
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        
+        return diffDays;
+    };
+
+    const mostrarNotificacion = (mensaje, tipo = 'success') => {
+        notificationMessage.textContent = mensaje;
+        notificationMessage.className = `notification-message ${tipo}`;
+        notificationMessage.style.display = 'block';
+        setTimeout(() => {
+            notificationMessage.style.display = 'none';
+        }, 3000);
+    };
+
 
     // --- Funciones de Persistencia ---
 
@@ -77,353 +93,322 @@ document.addEventListener('DOMContentLoaded', () => {
             movimientos = [];
         }
         
-        // Filtramos solo gastos.
-        movimientos = movimientos
-            .filter(mov => mov.tipo === 'gasto') 
-            .map(mov => ({ 
-                ...mov, 
-                // Si 'pagado' no existe, se asume Pendiente (false) por defecto para todos los gastos.
-                pagado: mov.pagado !== undefined ? mov.pagado : false 
-            }));
+        // Asegurar que todas las entradas antiguas tengan el campo 'pagado' por defecto
+        movimientos = movimientos.map(mov => ({ ...mov, pagado: mov.pagado !== undefined ? mov.pagado : false }));
         
-        actualizarResumenDetallado(); 
-        cambiarPestana('resumen'); 
+        // Cargar los datos y renderizar solo el resumen
+        actualizarResumenDetallado();
     };
 
-    // --- Ayuda de Formato, Notificación y Fechas ---
-
-    // NUEVA FUNCIÓN: Calcula los días restantes
-    const calcularDiasRestantes = (dateString) => {
-        if (!dateString) return -9999; // Valor bajo para fechas inválidas
-        const today = new Date();
-        // Ajustamos la fecha de hoy para que no tenga hora (a las 00:00:00)
-        today.setHours(0, 0, 0, 0); 
-
-        // Creamos la fecha de vencimiento
-        const vencimiento = new Date(dateString + 'T00:00:00');
-        
-        // Si la fecha de vencimiento es inválida, retorna valor bajo
-        if (isNaN(vencimiento)) return -9999; 
-        
-        // Cálculo de días
-        const diffTime = vencimiento.getTime() - today.getTime();
-        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-        return diffDays;
-    }
-
-
-    const formatearFecha = (dateString) => {
-        if (!dateString) return 'N/A';
-        const date = new Date(dateString + 'T00:00:00');
-        if (isNaN(date)) return 'Fecha Inválida';
-        
-        return date.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' });
-    }
+    // --- Lógica de Renderizado y Resumen --
     
-    const formatearMonto = (monto) => {
-        if (typeof monto !== 'number' || isNaN(monto)) return '0,00';
-        return new Intl.NumberFormat('es-ES', { 
-            style: 'decimal', 
-            minimumFractionDigits: 2, 
-            maximumFractionDigits: 2 
-        }).format(monto);
-    }
-    
-    // Función para mostrar notificación
-    const mostrarNotificacion = (message, type = 'success') => {
-        if (notificationMessage) {
-            notificationMessage.innerHTML = `<span style="font-size: 1.2em;">✅</span> ${message}`; // Icono y mensaje
-            notificationMessage.className = `notification-message show ${type}`; 
-            // Ocultar después de un tiempo
-            setTimeout(() => {
-                notificationMessage.classList.remove('show');
-            }, 2500); 
-        }
-    };
-
-    // --- Lógica del Resumen Detallado ---
-
     const actualizarResumenDetallado = () => {
+        gastosPendientes = 0;
+        gastosPagados = 0;
         
-        let gastosPendientesTotal = 0;
-        let gastosPagadosTotal = 0;
-        let gastosTotalesCalculo = 0; 
-        
-        if (tablaPendienteBody) tablaPendienteBody.innerHTML = '';
-        if (tablaPagadoBody) tablaPagadoBody.innerHTML = ''; 
-
-        const gastosPendientes = [];
-        const gastosPagados = [];
-
-
+        // Calcular totales
         movimientos.forEach(mov => {
             if (mov.tipo === 'gasto') {
-                gastosTotalesCalculo += mov.monto; 
-                
                 if (mov.pagado) {
-                    gastosPagadosTotal += mov.monto;
-                    gastosPagados.push(mov);
+                    gastosPagados += mov.monto;
                 } else {
-                    gastosPendientesTotal += mov.monto;
-                    gastosPendientes.push(mov);
+                    gastosPendientes += mov.monto;
                 }
             }
         });
-        
-        // 1. Renderizar Listas Pendientes
-        if (tablaPendienteBody) {
-            // ORDENAMIENTO en el resumen: Pendientes primero por fecha de vencimiento
-            gastosPendientes.sort((a, b) => {
-                return calcularDiasRestantes(a.fechaVencimiento) - calcularDiasRestantes(b.fechaVencimiento); 
-            });
 
-            gastosPendientes.forEach(mov => {
-                const diasRestantes = calcularDiasRestantes(mov.fechaVencimiento);
-                
-                // Aplicar clase de alerta si faltan pocos días
-                let claseFila = '';
-                if (diasRestantes <= 0) {
-                    claseFila = 'alerta-vencido';
-                } else if (diasRestantes <= 5) {
-                    claseFila = 'alerta-proximo';
-                }
+        const totalGastado = gastosPendientes + gastosPagados;
 
-                const nuevaFila = tablaPendienteBody.insertRow();
-                nuevaFila.className = claseFila; // Añadir clase a la fila
-                nuevaFila.innerHTML = `
-                    <td>${mov.descripcion} (${mov.categoria})</td>
-                    <td>${formatearFecha(mov.fechaVencimiento)}</td>
-                    <td class="monto-col">$${formatearMonto(mov.monto)}</td>
-                `;
-            });
-            if (sinPendientesEl) sinPendientesEl.style.display = gastosPendientes.length === 0 ? 'block' : 'none';
-        }
-        
-        // 2. Renderizar Listas Pagadas
-        if (tablaPagadoBody) {
-            gastosPagados.forEach(mov => {
-                const nuevaFila = tablaPagadoBody.insertRow();
-                nuevaFila.innerHTML = `
-                    <td>${mov.descripcion} (${mov.categoria})</td>
-                    <td>${formatearFecha(mov.fechaVencimiento)}</td>
-                    <td class="monto-col">$${formatearMonto(mov.monto)}</td>
-                `;
-            });
-            if (sinPagadosEl) sinPagadosEl.style.display = gastosPagados.length === 0 ? 'block' : 'none';
-        }
+        // Renderizar totales
+        pendienteTotalEl.textContent = `$${formatearMonto(gastosPendientes)}`;
+        pagadoTotalEl.textContent = `$${formatearMonto(gastosPagados)}`;
+        montoTotalGastadoEl.textContent = `$${formatearMonto(totalGastado)}`;
 
-        // 3. Actualizar Totales
-        if (pendienteTotalEl) pendienteTotalEl.textContent = `$${formatearMonto(gastosPendientesTotal)}`;
-        if (pagadoTotalEl) pagadoTotalEl.textContent = `$${formatearMonto(gastosPagadosTotal)}`;
-        // CORRECCIÓN: Asignar el total de GASTOS PAGADOS a "Monto Total Gastado" para que coincidan con "Ya Pagado"
-        if (montoTotalGastadoEl) montoTotalGastadoEl.textContent = `$${formatearMonto(gastosPagadosTotal)}`;
+        // Renderizar la tabla del resumen
+        renderizarResumenDetallado();
     }
-
-
-    // --- Lógica de Tablas Completas (Sección Detalle de Transacciones) ---
-
-    const obtenerMovimientosFiltrados = () => {
-        let movimientosFiltrados = [...movimientos];
-
-        // ORDENAMIENTO en Transacciones: Los gastos pendientes siempre van primero y se ordenan por vencimiento.
-        movimientosFiltrados.sort((a, b) => {
-            // Si el estado de pago es diferente, el pendiente (false) va primero
-            if (a.pagado !== b.pagado) {
-                return a.pagado ? 1 : -1; 
+    
+    const crearFilaResumen = (mov) => {
+        const tr = document.createElement('tr');
+        
+        // Aplica clases de alerta si está pendiente
+        if (!mov.pagado) {
+            const diasRestantes = calcularDiasRestantes(mov.fechaVencimiento);
+            if (diasRestantes <= 0) {
+                tr.classList.add('alerta-vencido'); // Vencido
+            } else if (diasRestantes <= 5) {
+                tr.classList.add('alerta-proximo'); // Próximo a vencer
             }
-            // Si el estado es el mismo, se ordena por fecha de vencimiento
-            return calcularDiasRestantes(a.fechaVencimiento) - calcularDiasRestantes(b.fechaVencimiento); 
-        });
-
-        return movimientosFiltrados;
+        }
+        
+        const fechaDisplay = mov.pagado ? formatearFecha(mov.fechaVencimiento) : calcularDiasRestantes(mov.fechaVencimiento) + ' días';
+        
+        tr.innerHTML = `
+            <td>${mov.descripcion}</td>
+            <td class="monto-col">$${formatearMonto(mov.monto)}</td>
+            <td>${mov.pagado ? formatearFecha(mov.fechaVencimiento) : fechaDisplay}</td>
+            <td>
+                ${mov.pagado ? 
+                    `<button class="btn-eliminar" data-id="${mov.id}" title="Eliminar">&times;</button>` : 
+                    `<button class="btn-pago" data-id="${mov.id}">Pagar</button>`
+                }
+            </td>
+        `;
+        
+        return tr;
     };
     
+    const renderizarResumenDetallado = () => {
+        if (!tablaPendienteBody || !tablaPagadoBody) return;
+        
+        tablaPendienteBody.innerHTML = '';
+        tablaPagadoBody.innerHTML = '';
+        
+        const pendientes = movimientos.filter(mov => mov.tipo === 'gasto' && !mov.pagado);
+        const pagados = movimientos.filter(mov => mov.tipo === 'gasto' && mov.pagado);
+
+        // Renderizar Pendientes
+        if (pendientes.length === 0) {
+            sinPendientesEl.style.display = 'table-row';
+        } else {
+            sinPendientesEl.style.display = 'none';
+            pendientes.forEach(mov => {
+                tablaPendienteBody.appendChild(crearFilaResumen(mov));
+            });
+        }
+
+        // Renderizar Pagados
+        if (pagados.length === 0) {
+            sinPagadosEl.style.display = 'table-row';
+        } else {
+            sinPagadosEl.style.display = 'none';
+            pagados.forEach(mov => {
+                tablaPagadoBody.appendChild(crearFilaResumen(mov));
+            });
+        }
+        
+        // Re-adjuntar Event Listeners para el resumen
+        document.querySelectorAll('#tablaPendiente .btn-pago').forEach(btn => {
+            btn.addEventListener('click', manejarPago);
+        });
+        document.querySelectorAll('#tablaPagado .btn-eliminar').forEach(btn => {
+            btn.addEventListener('click', manejarEliminacion);
+        });
+    };
+    
+    // --- Lógica de Transacciones (Pestaña) ---
+    
+    const crearFilaTransaccion = (mov) => {
+        const tr = document.createElement('tr');
+        const esFijo = mov.categoria === 'fijo';
+        const esIngreso = mov.tipo === 'ingreso';
+        
+        let descripcionCol = esIngreso ? mov.descripcion : `${mov.descripcion} (${mov.categoria})`;
+        let fechaCol = formatearFecha(mov.fechaVencimiento);
+        let estadoCol = '';
+        
+        if (esFijo && mov.tipo === 'gasto') {
+            estadoCol = `<span class="estado ${mov.pagado ? 'pagado' : 'pendiente'}">${mov.pagado ? 'Pagado' : 'Pendiente'}</span>`;
+            
+            // Aplica clases de alerta a gastos pendientes Fijos
+            if (!mov.pagado) {
+                const diasRestantes = calcularDiasRestantes(mov.fechaVencimiento);
+                if (diasRestantes <= 0) {
+                    tr.classList.add('alerta-vencido'); // Vencido
+                } else if (diasRestantes <= 5) {
+                    tr.classList.add('alerta-proximo'); // Próximo a vencer
+                }
+            }
+        } else if (esIngreso) {
+             estadoCol = `<span class="estado pagado">Ingreso</span>`;
+        }
+        
+        
+        let innerHTML;
+        if (esFijo || esIngreso) {
+            // Tabla de Fijos/Ingresos (Tiene 5 columnas: Desc, Monto, FechaPlanificada, Estado, Acciones)
+            innerHTML = `
+                <td>${descripcionCol}</td>
+                <td>$${formatearMonto(mov.monto)}</td>
+                <td class="col-vencimiento">${fechaCol}</td>
+                <td>${estadoCol}</td>
+                <td>
+                    ${mov.tipo === 'gasto' && !mov.pagado ? `<button class="btn-pago" data-id="${mov.id}">Pagar</button>` : ''}
+                    <button class="btn-editar" data-id="${mov.id}">Editar</button>
+                    <button class="btn-eliminar" data-id="${mov.id}">&times;</button>
+                </td>
+            `;
+        } else {
+            // Tabla de Variables/Ocio (Tiene 4 columnas: Desc/Cat, Monto, FechaGasto, Acciones)
+            innerHTML = `
+                <td>${descripcionCol}</td>
+                <td>$${formatearMonto(mov.monto)}</td>
+                <td class="col-vencimiento">${fechaCol}</td>
+                <td>
+                    <button class="btn-editar" data-id="${mov.id}">Editar</button>
+                    <button class="btn-eliminar" data-id="${mov.id}">&times;</button>
+                </td>
+            `;
+        }
+        
+        tr.innerHTML = innerHTML;
+        
+        return tr;
+    };
+
     const renderizarTablasCompletas = () => {
         if (!tablaFijosBody || !tablaVariablesBody) return;
-        
-        const movimientosArenderizar = obtenerMovimientosFiltrados();
 
         tablaFijosBody.innerHTML = '';
         tablaVariablesBody.innerHTML = '';
+        
+        // Filtrar y ordenar movimientos
+        const fijosEIngresos = movimientos.filter(mov => mov.categoria === 'fijo' || mov.tipo === 'ingreso')
+            .sort((a, b) => new Date(b.fechaVencimiento) - new Date(a.fechaVencimiento)); // Más reciente primero
 
-        movimientosArenderizar.forEach(movimiento => {
-            
-            let tablaDestino = null;
-            let contenidoFila = '';
-            
-            const fechaMostrar = formatearFecha(movimiento.fechaVencimiento);
-            const diasRestantes = calcularDiasRestantes(movimiento.fechaVencimiento);
+        const variablesYOcio = movimientos.filter(mov => mov.categoria !== 'fijo' && mov.tipo === 'gasto' && mov.categoria !== 'ingreso')
+            .sort((a, b) => new Date(b.fechaVencimiento) - new Date(a.fechaVencimiento)); // Más reciente primero
 
-
-            const botonesBase = `
-                <button class="btn-editar" data-id="${movimiento.id}">✏️</button>
-                <button class="btn-eliminar" data-id="${movimiento.id}">❌</button>
-            `;
-            let botonesAcciones = botonesBase;
-            
-            // Lógica de Alerta de Fila
-            let claseFila = '';
-            if (!movimiento.pagado) {
-                 if (diasRestantes <= 0) {
-                    claseFila = 'alerta-vencido';
-                 } else if (diasRestantes <= 5) {
-                    claseFila = 'alerta-proximo';
-                 }
-            }
-
-
-            // Indicador de Días
-            let indicadorDias = '';
-            if (!movimiento.pagado) {
-                if (diasRestantes < 0) {
-                    indicadorDias = `<span style="color: #f44336; font-weight: 600;">¡HACE ${Math.abs(diasRestantes)} DÍAS!</span>`;
-                } else if (diasRestantes === 0) {
-                    indicadorDias = `<span style="color: #ffb300; font-weight: 600;">¡HOY!</span>`;
-                } else {
-                    indicadorDias = `${diasRestantes} días`;
-                }
-            } else {
-                indicadorDias = 'Pagado';
-            }
-
-
-            if (movimiento.categoria === 'fijo') {
-                
-                if (!movimiento.pagado) {
-                    botonesAcciones = `<button class="btn-pago" data-id="${movimiento.id}">✅</button>` + botonesBase;
-                } else {
-                    botonesAcciones = `<span style="color: green; font-size: 1.2em;">✅</span>` + botonesBase;
-                }
-                
-                tablaDestino = tablaFijosBody; 
-                
-                let estadoTexto = movimiento.pagado ? 'Pagado' : 'Pendiente';
-                let claseEstado = movimiento.pagado ? 'pagado' : 'pendiente';
-                
-                // NOTA: Se incluye indicadorDias en la 5ta columna de la tabla de Fijos
-                contenidoFila = `
-                    <td>${movimiento.descripcion}</td>
-                    <td>$${formatearMonto(movimiento.monto)}</td>
-                    <td class="col-vencimiento">${fechaMostrar}</td>
-                    <td><span class="estado ${claseEstado}">${estadoTexto}</span></td>
-                    <td>${indicadorDias}</td> 
-                    <td>${botonesAcciones}</td> 
-                `;
-            } else { // Variable u Ocio
-                tablaDestino = tablaVariablesBody;
-                
-                if (!movimiento.pagado) {
-                    botonesAcciones = `<button class="btn-pago" data-id="${movimiento.id}">✅</button>` + botonesBase;
-                } else {
-                    botonesAcciones = `<span style="color: green; font-size: 1.2em;">✅</span>` + botonesBase;
-                }
-                
-                let estadoTexto = movimiento.pagado ? 'Pagado' : 'Pendiente';
-                let claseEstado = movimiento.pagado ? 'pagado' : 'pendiente';
-                
-                // NOTA: La tabla de Variables solo tiene 5 columnas de contenido (Desc, Monto, Fecha, Estado, Acciones)
-                contenidoFila = `
-                    <td>${movimiento.descripcion} (${movimiento.categoria})</td>
-                    <td>$${formatearMonto(movimiento.monto)}</td>
-                    <td class="col-vencimiento">${fechaMostrar}</td>
-                    <td><span class="estado ${claseEstado}">${estadoTexto}</span></td> 
-                    <td>${botonesAcciones}</td>
-                `;
-            }
-
-            const nuevaFila = tablaDestino.insertRow();
-            nuevaFila.setAttribute('data-id', movimiento.id);
-            nuevaFila.className = claseFila; // Aplica la clase de alerta
-            nuevaFila.innerHTML = contenidoFila;
-
-            // Adjuntar listeners
-            const btnEliminar = nuevaFila.querySelector('.btn-eliminar');
-            if (btnEliminar) btnEliminar.addEventListener('click', manejarEliminacion);
-            
-            const btnEditar = nuevaFila.querySelector('.btn-editar');
-            if (btnEditar) btnEditar.addEventListener('click', manejarEdicion);
-            
-            const btnPago = nuevaFila.querySelector('.btn-pago');
-            if (btnPago) btnPago.addEventListener('click', manejarPago);
+        // Renderizar Fijos e Ingresos
+        fijosEIngresos.forEach(mov => {
+            tablaFijosBody.appendChild(crearFilaTransaccion(mov));
         });
-    }
-
-    // --- Funciones del Modal y CRUD ---
+        
+        // Renderizar Variables y Ocio
+        variablesYOcio.forEach(mov => {
+            tablaVariablesBody.appendChild(crearFilaTransaccion(mov));
+        });
+        
+        // Re-adjuntar Event Listeners
+        document.querySelectorAll('.btn-editar').forEach(btn => {
+            btn.addEventListener('click', manejarEdicion);
+        });
+        document.querySelectorAll('.btn-eliminar').forEach(btn => {
+            btn.addEventListener('click', manejarEliminacion);
+        });
+        document.querySelectorAll('.btn-pago').forEach(btn => {
+            btn.addEventListener('click', manejarPago);
+        });
+    };
     
-    abrirModalBtn.onclick = () => {
-        modalTitulo.textContent = 'Añadir Movimiento';
-        movimientoIdHidden.value = ''; 
-        formulario.reset(); 
-        document.getElementById('tipo').value = 'gasto'; 
+    // --- Manejo de Eventos y Modales ---
+    
+    const abrirModal = (esEdicion = false, id = null) => {
+        formulario.reset();
+        movimientoIdHidden.value = id || '';
+        
+        if (esEdicion) {
+            modalTitulo.textContent = 'Editar Movimiento';
+            const mov = movimientos.find(m => m.id === id);
+            if (mov) {
+                document.getElementById('tipo').value = mov.tipo;
+                document.getElementById('descripcion').value = mov.descripcion;
+                document.getElementById('monto').value = mov.monto;
+                document.getElementById('fechaVencimiento').value = mov.fechaVencimiento;
+                document.getElementById('categoria').value = mov.categoria || 'fijo'; // Asegura un valor por defecto
+            }
+        } else {
+            modalTitulo.textContent = 'Añadir Movimiento';
+        }
         modal.style.display = 'block';
-    }
+    };
 
     const cerrarModal = () => {
         modal.style.display = 'none';
-        formulario.reset(); 
-        movimientoIdHidden.value = ''; 
-    }
-    cerrarModalBtn.onclick = cerrarModal;
-    window.onclick = (event) => {
-        if (event.target == modal) {
-            cerrarModal();
-        }
-    }
-
+        formulario.reset();
+    };
+    
     const manejarEdicion = (e) => {
         const movimientoId = parseInt(e.currentTarget.dataset.id);
-        const indice = movimientos.findIndex(mov => mov.id === movimientoId);
-        const movimiento = movimientos[indice];
-
-        if (movimiento) {
-            modalTitulo.textContent = 'Editar Movimiento';
-            movimientoIdHidden.value = movimiento.id; 
-
-            document.getElementById('tipo').value = 'gasto'; 
-            document.getElementById('descripcion').value = movimiento.descripcion;
-            document.getElementById('monto').value = movimiento.monto;
-            document.getElementById('fechaVencimiento').value = movimiento.fechaVencimiento;
-            document.getElementById('categoria').value = movimiento.categoria;
-            
-            modal.style.display = 'block';
-        }
+        abrirModal(true, movimientoId);
     };
 
     const manejarPago = (e) => {
         const movimientoId = parseInt(e.currentTarget.dataset.id);
-        const indice = movimientos.findIndex(mov => mov.id === movimientoId);
+        const mov = movimientos.find(m => m.id === movimientoId);
         
-        if (indice !== -1 && !movimientos[indice].pagado) { 
-            movimientos[indice].pagado = true;
+        if (mov && !mov.pagado) {
+            mov.pagado = true;
+            // Se actualiza la fecha de vencimiento a la fecha de hoy para el resumen pagado
+            const hoy = new Date().toISOString().split('T')[0];
+            mov.fechaVencimiento = hoy; 
             
             guardarDatos();
-            // Mostrar notificación antes de recargar
-            mostrarNotificacion(`¡${movimientos[indice].descripcion} pagado!`);
+            actualizarResumenDetallado();
+            renderizarTablasCompletas();
+            mostrarNotificacion(`✅ ${mov.descripcion} marcado como PAGADO.`, 'success');
+        }
+    };
+    
+    const manejarEliminacion = (e) => {
+        const movimientoId = parseInt(e.currentTarget.dataset.id);
+        const movimientoAEliminar = movimientos.find(mov => mov.id === movimientoId);
 
-            // Recargar datos después de la notificación
-            setTimeout(() => {
-                actualizarResumenDetallado(); 
-                renderizarTablasCompletas(); 
-            }, 50); // Pequeño delay para que la notificación se muestre primero
+        if (confirm(`¿Estás seguro de que quieres eliminar "${movimientoAEliminar.descripcion}" ($${formatearMonto(movimientoAEliminar.monto)})?`)) {
+            movimientos = movimientos.filter(mov => mov.id !== movimientoId);
+            
+            guardarDatos();
+            actualizarResumenDetallado();
+            renderizarTablasCompletas();
+            mostrarNotificacion(`🗑️ ${movimientoAEliminar.descripcion} eliminado.`, 'error');
         }
     };
 
+    // --- Inicialización ---
+    
+    // Evento para los TABS
+    tabButtons.forEach(button => {
+        button.addEventListener('click', () => {
+            const targetTab = button.dataset.tab;
 
+            tabContents.forEach(content => {
+                content.classList.remove('active');
+            });
+
+            tabButtons.forEach(btn => {
+                btn.classList.remove('active');
+            });
+
+            document.querySelector(`.tab-content[data-tab="${targetTab}"]`).classList.add('active');
+            button.classList.add('active');
+            
+            // Si el usuario cambia a transacciones, renderiza la tabla completa
+            if (targetTab === 'transacciones') {
+                 renderizarTablasCompletas();
+            }
+        });
+    });
+
+    // Cargar datos al iniciar y renderizar resumen
+    cargarDatos();
+    
+    // Event Listeners del Modal
+    abrirModalBtn.addEventListener('click', () => abrirModal());
+    cerrarModalBtn.addEventListener('click', cerrarModal);
+    window.addEventListener('click', (event) => {
+        if (event.target === modal) {
+            cerrarModal();
+        }
+    });
+
+    // Event Listener del Formulario
     formulario.addEventListener('submit', (e) => {
         e.preventDefault();
-
+        
         const id = movimientoIdHidden.value ? parseInt(movimientoIdHidden.value) : Date.now();
-        const tipo = 'gasto'; 
+        const isEditing = !!movimientoIdHidden.value;
+        
+        const tipo = document.getElementById('tipo').value;
         const descripcion = document.getElementById('descripcion').value;
         const monto = parseFloat(document.getElementById('monto').value);
-        const fechaVencimiento = document.getElementById('fechaVencimiento').value; 
+        const fechaVencimiento = document.getElementById('fechaVencimiento').value;
         const categoria = document.getElementById('categoria').value;
         
-        const isEditing = !!movimientoIdHidden.value;
         let pagadoStatus = false;
 
+        // Si estamos editando, conservamos el estado de pago original
         if (isEditing) {
-            pagadoStatus = movimientos.find(mov => mov.id === id)?.pagado || false;
+          pagadoStatus = movimientos.find(mov => mov.id === id)?.pagado || false;
         }
 
 
@@ -434,6 +419,7 @@ document.addEventListener('DOMContentLoaded', () => {
             monto: monto,
             fechaVencimiento: fechaVencimiento, 
             categoria: categoria,
+            // Si es nueva entrada, se establece PENDIENTE (false) por defecto o si se está editando, se mantiene el estado
             pagado: isEditing ? pagadoStatus : false 
         };
 
@@ -448,25 +434,9 @@ document.addEventListener('DOMContentLoaded', () => {
         
         guardarDatos();
         actualizarResumenDetallado();
-        renderizarTablasCompletas(); 
+        renderizarTablasCompletas(); // Renderiza todas para asegurar que el cambio se refleje
         
         cerrarModal();
     });
 
-    const manejarEliminacion = (e) => {
-        const movimientoId = parseInt(e.currentTarget.dataset.id);
-        const movimientoAEliminar = movimientos.find(mov => mov.id === movimientoId);
-
-        if (confirm(`¿Estás seguro de que quieres eliminar "${movimientoAEliminar.descripcion}" ($${formatearMonto(movimientoAEliminar.monto)})?`)) {
-            movimientos = movimientos.filter(mov => mov.id !== movimientoId);
-            
-            guardarDatos();
-            actualizarResumenDetallado();
-            renderizarTablasCompletas();
-        }
-    };
-    
-    // --- Inicialización y Listeners Finales ---
-    
-    cargarDatos();
-});
+}); // Fin del DOMContentLoaded

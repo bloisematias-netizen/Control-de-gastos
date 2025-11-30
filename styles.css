@@ -90,6 +90,12 @@ main {
 
 /* --- Estilo del Resumen DETALLADO --- */
 
+.resumen-detallado {
+    /* Agregado para que ocupe todo el ancho en mobile */
+    width: 100%;
+    box-sizing: border-box; 
+}
+
 .detalle-grupo {
     margin-bottom: 20px;
     padding: 10px;
@@ -105,16 +111,8 @@ main {
 .detalle-grupo.pagado {
     border-color: var(--color-principal);
     background-color: #ebfff0;
-    /* 🟢 FIX: Asegura que todo el texto dentro del grupo Pagado sea negro */
+    /* FIX: Asegura que todo el texto dentro del grupo Pagado sea negro */
     color: var(--color-texto);
-}
-
-/* Las siguientes reglas ya existían para forzar el color negro en el título, ahora son redundantes pero inofensivas */
-.detalle-grupo.pagado .titulo-grupo {
-    color: var(--color-texto); 
-}
-.detalle-grupo.pagado .titulo-grupo span {
-    color: var(--color-texto); 
 }
 
 .titulo-grupo {
@@ -137,7 +135,7 @@ main {
     padding: 6px 4px;
     border-bottom: 1px solid #ddd;
     text-align: left;
-    color: var(--color-texto); /* Aseguramos que el contenido de la tabla también sea negro */
+    color: var(--color-texto); 
 }
 
 .tabla-resumen th {
@@ -419,4 +417,25 @@ th {
 .categoria-gasto td:nth-child(5) { 
     font-weight: 600;
     white-space: nowrap;
+}
+
+.notification-message {
+    display: none;
+    padding: 10px;
+    margin: 10px 0;
+    border-radius: 4px;
+    font-weight: bold;
+    text-align: center;
+}
+
+.notification-message.success {
+    background-color: #d4edda;
+    color: #155724;
+    border: 1px solid #c3e6cb;
+}
+
+.notification-message.error {
+    background-color: #f8d7da;
+    color: #721c24;
+    border: 1px solid #f5c6cb;
 }

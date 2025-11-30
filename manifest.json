@@ -2,18 +2,21 @@
   "name": "Mis Gastos Mensuales",
   "short_name": "GastosApp",
   "description": "Control personal de cuentas a pagar con enfoque en vencimientos.",
-  "start_url": "/index.html",
+  // Antes: "/index.html" -> CRÍTICO: Debe ser relativo
+  "start_url": "index.html",
   "display": "standalone",
   "background_color": "#f8f9fa",
   "theme_color": "#4CAF50",
   "icons": [
     {
-      "src": "/icons/icon-192x192.png",
+      // Antes: "/icons/icon-192x192.png" -> CRÍTICO: Debe ser relativo
+      "src": "icons/icon-192x192.png",
       "sizes": "192x192",
       "type": "image/png"
     },
     {
-      "src": "/icons/icon-512x512.png",
+      // Antes: "/icons/icon-512x512.png" -> CRÍTICO: Debe ser relativo
+      "src": "icons/icon-512x512.png",
       "sizes": "512x512",
       "type": "image/png"
     }
